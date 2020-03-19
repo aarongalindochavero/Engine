@@ -1,13 +1,19 @@
 #include "Game.h"
 #include "TextureManager.h"
-#include "GameObject.h"
 #include "Map.h"
+#include "ECS.h"
+#include "Components.h"
+#include "Vector2D.h"
+#include "Collision.h"
 
-GameObject* player;
-GameObject* enemy;
 Map* map;
+Manager manager;
 
 SDL_Renderer* Game::renderer = nullptr;
+SDL_Event Game::event;
+
+auto& player(manager.addEntity());
+auto& wall(manager.addEntity());
 
 Game::Game()
 {}
@@ -44,14 +50,21 @@ void Game::init(const char* title, int xpos, int ypos, int width, int height, bo
 		isRunning = false;
 	}*/
 
-	player = new GameObject("Assets/Player.png", 0, 0);
-	enemy = new GameObject("Assets/enemy.png", 50, 50);
+
 	map = new Map();
+
+	player.addComponent<TransformComponent>();
+	player.addComponent<SpriteComponent>("assets/player.png");
+	player.addComponent<KeyBoardController>();
+	player.addComponent<ColliderComponent>("player");
+
+	wall.addComponent<TransformComponent>(300.0f, 300.0f, 300, 20, 1);
+	wall.addComponent<SpriteComponent>("assets/dirt.png");
+	wall.addComponent<ColliderComponent>("wall");
 }
 
 void Game::handleEvents()
 {
-	SDL_Event event;
 	SDL_PollEvent(&event);
 
 	switch (event.type)
@@ -67,17 +80,23 @@ void Game::handleEvents()
 
 void Game::update()
 {
-	player->update();
-	enemy->update();
+	manager.refresh();
+	manager.update();
+
+	if (Collision::AABB(player.getComponent<ColliderComponent>().collider,
+						wall.getComponent<ColliderComponent>().collider)) {
+		player.getComponent<TransformComponent>().scale = 1;
+		player.getComponent<TransformComponent>().velocity * -1;
+		std::cout << "wall hit" << std::endl;
+	}
 }
 
 void Game::render()
 {
 	SDL_RenderClear(renderer);
-	//aqui es donde vamos a agregar cosas para renderear
 	map->DrawMap();
-	player->Render();
-	enemy->Render();
+
+	manager.draw();
 	SDL_RenderPresent(renderer);
 
 }
